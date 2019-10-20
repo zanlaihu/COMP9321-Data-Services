@@ -32,7 +32,7 @@ parser.add_argument('ascending', type=inputs.boolean)
 
 @api.route('/books')
 class BooksList(Resource):
-    @api.expect(parser, validate=True)
+
     @api.response(200, 'Successful')
     @api.doc(description="Get all books")
     def get(self):
@@ -46,16 +46,23 @@ class BooksList(Resource):
         if order_by:
             df.sort_values(by=order_by, inplace=True, ascending=ascending)
 
-        json_str = df.to_json(orient='records')
+        json_str = df.to_json(orient='index')
 
         # convert the string JSON to a real JSON
-        ret = json.loads(json_str)
+        ds = json.loads(json_str)
+        ret = []
+
+        for idx in ds:
+            book = ds[idx]
+            book['Identifier'] = int(idx)
+            ret.append(book)
+
         return ret
 
-    @api.expect(book_model)
     @api.response(201, 'Book Created Successfully')
     @api.response(400, 'Validation Error')
     @api.doc(description="Add a new book")
+    @api.expect(book_model, validate=True)
     def post(self):
         book = request.json
 
@@ -75,7 +82,7 @@ class BooksList(Resource):
                 return {"message": "Property {} is invalid".format(key)}, 400
             df.loc[id, key] = book[key]
 
-        df.append(book, ignore_index=True)
+        # df.append(book, ignore_index=True)
         return {"message": "Book {} is created".format(id)}, 201
 
 
@@ -105,7 +112,7 @@ class Books(Resource):
     @api.response(404, 'Book was not found')
     @api.response(400, 'Validation Error')
     @api.response(200, 'Successful')
-    @api.expect(book_model)
+    @api.expect(book_model, validate=True)
     @api.doc(description="Update a book by its ID")
     def put(self, id):
 
